@@ -1,14 +1,36 @@
-# case_facio_financial_reconciliation
+# Case Facio - Financial Reconciliation
 
-Repositório para conciliação financeira entre a posição interna da Facio e a posição reportada pelo gestor do fundo.
+Este projeto realiza a conciliação entre os dados da Facio e dos Fundos, respondendo às 5 questões do case.
 
 ## Estrutura
-- `data/processed/` : arquivos tratados (facio_tratado.csv, fundo_tratado.csv)
-- `analysis/` : scripts de conciliação e plots
-- `notebooks/` : notebook interativo
-- `outputs/` : resultados gerados (CSV, JSON, PNG)
-- `docs/` : resumo executivo e playbook operacional
+- `scripts/validate_and_clean.py` → limpeza e normalização dos dados
+- `analysis/reconciliation.py` → conciliação final e geração de KPIs
+- `notebooks/01_reconciliation_analysis.ipynb` → análises e gráficos
+- `outputs/` → resultados, KPIs, amostras e figuras
 
-## Como rodar (a partir dos dados tratados)
-1. Coloque `facio_tratado.csv` e `fundo_tratado.csv` em `data/processed/`.
-2. Crie ambiente virtual e instale dependências:
+## Principais Resultados
+- Total linhas: 49.999
+- Match Exact: 15.442
+- Match Divergent: 25.253
+- Only Fundo: 9.295
+- Only Facio: 9
+- VP Facio: R$ 9.120.573,86
+- VP Fundo: R$ 9.056.501,02
+- Total abs diff: R$ 1.545.850,23
+
+## Gráficos
+Todos os gráficos foram gerados nas cores da Facio (azul e verde), conforme o enunciado.
+
+## Como rodar
+```bash
+# ativar ambiente
+source ./source/Scripts/activate
+
+# rodar limpeza
+python -m scripts.validate_and_clean
+
+# rodar conciliação
+python -m analysis.reconciliation
+
+# abrir notebook
+jupyter notebook notebooks/01_reconciliation_analysis.ipynb
