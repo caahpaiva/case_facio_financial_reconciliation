@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Relatório de Conciliação Facio
 
 ## KPIs Gerais
@@ -14,6 +15,8 @@
 - FACIO 3 → FIDC3
 - FACIO 4 → FIDC4
 
+=======
+>>>>>>> f022528d628029df2c842a0b86ea1e8da4572596
 # Resumo Executivo - Reconciliação de Carteira Facio
 
 ## Objetivo e metodologia
@@ -44,6 +47,10 @@ A metodologia aplicada contemplou:
 ---
 
 # 1. Resultado da Reconciliação
+
+## Mapping de Fundos
+- FACIO 3 → FIDC3
+- FACIO 4 → FIDC4
 
 A carteira analisada apresentou o seguinte resultado:
 
