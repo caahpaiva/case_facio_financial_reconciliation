@@ -1,0 +1,10 @@
+{
+  "total_rows": 90694,
+  "counts_by_status": {
+    "Only Fundo": 49990,
+    "Only Facio": 40704
+  },
+  "vp_total_facio": 9120573.860640373,
+  "vp_total_fundo": 9056501.01602084,
+  "total_abs_diff": 0.0
+}
