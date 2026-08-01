@@ -1,12 +1,13 @@
 {
   "total_rows": 49999,
   "counts_by_status": {
-    "Match Divergent": 25253,
-    "Match Exact": 15442,
+    "Match Exact": 35849,
     "Only Fundo": 9295,
+    "Match Divergent": 4846,
     "Only Facio": 9
   },
-  "vp_total_facio": 9120573.860640373,
+  "vp_total_exposicao": 9233833.336625725,
+  "vp_total_facio": 7786711.143849044,
   "vp_total_fundo": 9056501.01602084,
-  "total_abs_diff": 1545850.2262618532
+  "total_abs_diff_divergentes": 176438.13951674267
 }
