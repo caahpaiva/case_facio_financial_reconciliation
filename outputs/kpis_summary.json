@@ -1,0 +1,12 @@
+{
+  "total_rows": 49999,
+  "counts_by_status": {
+    "Match Divergent": 25253,
+    "Match Exact": 15442,
+    "Only Fundo": 9295,
+    "Only Facio": 9
+  },
+  "vp_total_facio": 9120573.860640373,
+  "vp_total_fundo": 9056501.01602084,
+  "total_abs_diff": 1545850.2262618532
+}
