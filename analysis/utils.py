@@ -6,7 +6,7 @@ Funções utilitárias de leitura, cálculo de VP e classificação de concilia�
 import numpy as np
 import pandas as pd
 
-DATE_COLS = ["data_referencia", "data_cessao", "data_vencimento"]
+
 
 EPS_ABS = 0.01
 
@@ -24,13 +24,6 @@ def read_data(facio_path: str, fundo_path: str):
                 df[col] = pd.to_datetime(df[col], errors="coerce").dt.normalize()
 
     return df_facio, df_fundo
-
-
-def days_between(start, end):
-    """Dias corridos entre duas colunas de data, normalizando antes de
-    subtrair.
-    """
-    return (end.dt.normalize() - start.dt.normalize()).dt.days
 
 
 def compute_implicit_rate(vc, vn, dc_cessao):
@@ -66,31 +59,44 @@ def compute_vp(vc, i, t, dc_cessao):
     return vp
 
 
-def safe_round(x, ndigits=2):
-    return np.round(x, ndigits)
 
+def classify_reconciliation(merge_indicator, vp_facio, vp_fundo, eps_abs=EPS_ABS):
+    """Classificação vetorizada (np.select) dos status de reconciliação.
 
-def classify_reconciliation(row, eps_abs=EPS_ABS):
-    """Classifica uma linha (facio x fundo já mergeados) em status de conciliação.
+    Usa o indicador `_merge` do outer join — não apenas a nulidade de VP —
+    para não confundir "parcela não existe no outro arquivo" com "parcela
+    existe mas o VP não pôde ser calculado por dado inválido" (ex.:
+    valor_cessao <= 0). As duas situações antes caíam ambas em
+    "Missing Both", o que mascarava um problema de qualidade de dado como
+    se fosse ausência genuína nos dois arquivos.
+
+    Tolerância só absoluta (ver EPS_ABS) — sem braço relativo, para bater
+    exatamente com o critério do notebook final do case.
     """
-    vp_facio = row.get("valor_presente_calculado", np.nan)
-    vp_fundo = row.get("valor_presente_fundo", np.nan)
-    merge_flag = row.get("_merge", None)
+    vp_facio = np.asarray(vp_facio, dtype=float)
+    vp_fundo = np.asarray(vp_fundo, dtype=float)
 
-    exists_facio = merge_flag in ("both", "left_only") if merge_flag is not None else not pd.isna(vp_facio)
-    exists_fundo = merge_flag in ("both", "right_only") if merge_flag is not None else not pd.isna(vp_fundo)
+    diff = np.abs(vp_facio - vp_fundo)
+    is_match = diff <= eps_abs
 
-    if exists_facio and exists_fundo:
-        if pd.isna(vp_facio):
-            # parcela existe nos dois arquivos, mas o VP da Facio não pôde
-            # ser calculado (dado de entrada inválido) — não é a mesma
-            # coisa que "os valores batem" nem que "a parcela não existe".
-            return "Invalid Facio Data"
-        diff = abs(vp_facio - vp_fundo)
-        return "Match Exact" if diff <= eps_abs else "Match Divergent"
-    elif exists_facio and not exists_fundo:
-        return "Only Facio"
-    elif exists_fundo and not exists_facio:
-        return "Only Fundo"
-    else:
-        return "Missing Both"
+    only_facio = merge_indicator == "left_only"
+    only_fundo = merge_indicator == "right_only"
+    both_present = merge_indicator == "both"
+
+    vp_facio_invalido = both_present & pd.isna(vp_facio)  # existe na Facio, VP não calculável (dado ruim)
+
+    conditions = [
+        only_facio,
+        only_fundo,
+        vp_facio_invalido,
+        both_present & is_match,
+        both_present & ~is_match,
+    ]
+    choices = [
+        "Only Facio",
+        "Only Fundo",
+        "Invalid Facio Data",
+        "Match Exact",
+        "Match Divergent",
+    ]
+    return np.select(conditions, choices, default="Unclassified")

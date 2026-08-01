@@ -17,6 +17,13 @@ import logging
 import numpy as np
 import pandas as pd
 import unicodedata
+from analysis.normalization import normalize_key
+from analysis.utils import (
+    EPS_ABS,
+    compute_implicit_rate,
+    compute_vp,
+    classify_reconciliation,
+)
 
 # --------------------------------------------------------------------------
 # configuração
@@ -34,113 +41,21 @@ FUNDO_PARQUET = DATA_PROCESSED / "fundo_tratado.parquet"
 FACIO_CSV = DATA_PROCESSED / "facio_tratado.csv"
 FUNDO_CSV = DATA_PROCESSED / "fundo_tratado.csv"
 
-# parâmetro de tolerância de materialidade para conciliação — ABSOLUTO, R$ 0,01.
-#
-# Alinhado deliberadamente com o notebook final entregue no case (Q1):
-# analisando a distribuição de |VP_fundo - VP_calculado| nos registros
-# presentes nos dois lados, ~88% dos casos têm diferença < R$ 0,01 (ruído
-# de arredondamento) e o restante salta direto para R$ 0,05+ (divergência
-# econômica real) — sem zona cinzenta no meio.
-#
-# Um critério combinado (absoluto OU relativo) foi cogitado, mas classifica
-# ~167 parcelas a mais como "Match" do que o notebook final, porque o braço
-# relativo (0,1%) passa a dominar em VPs maiores e absorve diferenças de
-# vários centavos que o notebook considerou divergência real. Mantendo só
-# o critério absoluto, os dois pipelines batem exatamente.
-EPS_ABS = 0.01
 
-DATE_COLS = ["data_referencia", "data_cessao", "data_vencimento"]
-NUMERIC_COLS = ["valor_cessao", "valor_nominal", "valor_presente_fundo", "valor_presente_calculado"]
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
+DATE_COLS = ["data_referencia", "data_cessao", "data_vencimento"]
 
-def compute_implicit_rate(vc, vn, dc_cessao):
-    """Taxa diária implícita: i = (VN/VC)^(1/dc_cessao) - 1, com NaN para entradas inválidas."""
-    vc = np.asarray(vc, dtype=float)
-    vn = np.asarray(vn, dtype=float)
-    dc = np.asarray(dc_cessao, dtype=float)
-    i = np.full_like(vc, np.nan, dtype=float)
-    valid = (vc > 0) & (vn > 0) & (dc > 0)
-    if valid.any():
-        i[valid] = np.power(vn[valid] / vc[valid], 1.0 / dc[valid]) - 1.0
-    return i
+NUMERIC_COLS = [
+    "valor_cessao",
+    "valor_nominal",
+    "valor_presente_fundo",
+    "valor_presente_calculado",
+]
 
 
-def compute_vp(vc, i, t, dc_cessao):
-    """VP = VC * (1+i)^t, capitalizado apenas até o vencimento.
-
-    `t` é capado em `dc_cessao`: uma parcela já vencida na data de
-    referência não deve seguir rendendo juros além do valor de face — o
-    próprio fundo trava o VP em valor_nominal nesses casos (confirmado
-    comparando com o exemplo de contrato vencido do case). Sem esse cap,
-    ~30% da carteira (parcelas vencidas ainda ativas na posição) fica com
-    VP superestimado e a taxa de conciliação cai de ~72% para ~54%.
-    """
-    vc = np.asarray(vc, dtype=float)
-    i = np.asarray(i, dtype=float)
-    t = np.asarray(t, dtype=float)
-    dc = np.asarray(dc_cessao, dtype=float)
-
-    t_capado = np.where(np.isnan(t) | np.isnan(dc), t, np.minimum(t, dc))
-
-    vp = np.full_like(vc, np.nan, dtype=float)
-    valid = (~np.isnan(i)) & (~np.isnan(vc)) & (~np.isnan(t_capado))
-    if valid.any():
-        vp[valid] = vc[valid] * np.power(1 + i[valid], t_capado[valid])
-    return vp
-
-
-def classify_status(merge_indicator, vp_facio, vp_fundo, eps_abs=EPS_ABS):
-    """Classificação vetorizada (np.select) dos status de reconciliação.
-
-    Usa o indicador `_merge` do outer join — não apenas a nulidade de VP —
-    para não confundir "parcela não existe no outro arquivo" com "parcela
-    existe mas o VP não pôde ser calculado por dado inválido" (ex.:
-    valor_cessao <= 0). As duas situações antes caíam ambas em
-    "Missing Both", o que mascarava um problema de qualidade de dado como
-    se fosse ausência genuína nos dois arquivos.
-
-    Tolerância só absoluta (ver EPS_ABS) — sem braço relativo, para bater
-    exatamente com o critério do notebook final do case.
-    """
-    vp_facio = np.asarray(vp_facio, dtype=float)
-    vp_fundo = np.asarray(vp_fundo, dtype=float)
-
-    diff = np.abs(vp_facio - vp_fundo)
-    is_match = diff <= eps_abs
-
-    only_facio = merge_indicator == "left_only"
-    only_fundo = merge_indicator == "right_only"
-    both_present = merge_indicator == "both"
-
-    vp_facio_invalido = both_present & pd.isna(vp_facio)  # existe na Facio, VP não calculável (dado ruim)
-
-    conditions = [
-        only_facio,
-        only_fundo,
-        vp_facio_invalido,
-        both_present & is_match,
-        both_present & ~is_match,
-    ]
-    choices = [
-        "Only Facio",
-        "Only Fundo",
-        "Invalid Facio Data",
-        "Match Exact",
-        "Match Divergent",
-    ]
-    return np.select(conditions, choices, default="Unclassified")
-
-
-def norm_str(s):
-    if pd.isna(s):
-        return ""
-    s = str(s).strip()
-    s = unicodedata.normalize("NFKC", s)
-    s = s.replace("\u00A0", " ")
-    return s
 
 
 def read_processed(parquet_path: Path, csv_path: Path) -> pd.DataFrame:
@@ -181,8 +96,8 @@ def run_reconciliation(
     fundo = read_processed(fundo_parquet, fundo_csv)
     logger.info("Shapes lidos - Facio: %s, Fundo: %s", facio.shape, fundo.shape)
 
-    facio["key"] = facio["key"].astype(str).apply(norm_str)
-    fundo["key"] = fundo["key"].astype(str).apply(norm_str)
+    facio["key"] = normalize_key(facio["key"])
+    fundo["key"] = normalize_key(fundo["key"])
 
     # debug de chave (mantido do script original)
     debug_cols = ["id_contrato", "parcela", "parcela_z", "fundo", "fundo_code", "key"]
@@ -229,15 +144,15 @@ def run_reconciliation(
             lambda k: fundo_lookup.loc[k] if k in fundo_lookup.index else pd.Series({"fundo": pd.NA, "fundo_code": pd.NA})
         ).apply(pd.Series).values
 
-    # classificação vetorizada (ver docstring de classify_status)
-    merged["recon_status"] = classify_status(
+    # classificação vetorizada (ver docstring de classify_reconciliation)
+    merged["recon_status"] = classify_reconciliation(
         merged["_merge"].values,
         merged.get("valor_presente_calculado", pd.Series(np.nan, index=merged.index)).values,
         merged.get("valor_presente_fundo", pd.Series(np.nan, index=merged.index)).values,
     )
 
     # divergências — denominador único (VP do fundo), consistente com o
-    # critério usado dentro de classify_status
+    # critério usado dentro de classify_reconciliation
     vp_facio_col = merged.get("valor_presente_calculado", pd.Series(np.nan, index=merged.index))
     vp_fundo_col = merged.get("valor_presente_fundo", pd.Series(np.nan, index=merged.index))
     merged["abs_diff"] = (vp_facio_col - vp_fundo_col).abs()
