@@ -1,19 +1,3 @@
-# Relatório de Conciliação Facio
-
-## KPIs Gerais
-- Total linhas: 49.999
-- Match Exact: 15.442
-- Match Divergent: 25.253
-- Only Fundo: 9.295
-- Only Facio: 9
-- VP Facio: R$ 9.120.573,86
-- VP Fundo: R$ 9.056.501,02
-- Total abs diff: R$ 1.545.850,23
-
-## Mapping de Fundos
-- FACIO 3 → FIDC3
-- FACIO 4 → FIDC4
-
 # Resumo Executivo - Reconciliação de Carteira Facio
 
 ## Objetivo e metodologia
@@ -44,6 +28,10 @@ A metodologia aplicada contemplou:
 ---
 
 # 1. Resultado da Reconciliação
+
+## Mapping de Fundos
+- FACIO 3 → FIDC3
+- FACIO 4 → FIDC4
 
 A carteira analisada apresentou o seguinte resultado:
 
