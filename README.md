@@ -1,57 +1,99 @@
 # Case Facio – Financial Reconciliation
 
-## Visão Geral
+## Sobre o projeto
 
-Este repositório contém a solução desenvolvida para o **Case de Business Analyst – Conciliação Financeira da Facio**.
+Este repositório apresenta a solução desenvolvida para o **Case de Business Analyst – Conciliação Financeira da Facio**.
 
-O objetivo do projeto foi implementar um processo completo de conciliação entre a posição da Facio e a posição dos Fundos, incluindo cálculo da taxa implícita, cálculo do Valor Presente (VP), classificação das divergências e análises financeiras para suporte à tomada de decisão.
+O projeto implementa um fluxo completo de reconciliação financeira entre a posição interna da Facio e a posição dos Fundos, contemplando:
 
----
-
-# Objetivos
-
-O projeto responde integralmente às cinco questões propostas no case:
-
-- ✔ Implementação da conciliação de carteira
-- ✔ Análise de exposição financeira
-- ✔ Análise da taxa implícita utilizada pelo Fundo
-- ✔ Composição e concentração do portfólio
-- ✔ Hipóteses de causa-raiz e recomendações operacionais
+- padronização e validação dos dados;
+- cálculo da taxa implícita de desconto;
+- cálculo do Valor Presente (VP);
+- reconciliação das carteiras;
+- classificação das divergências;
+- geração automática de KPIs;
+- análises exploratórias e recomendações operacionais.
 
 ---
 
-# Estrutura do Projeto
+## Objetivos do Case
+
+A solução responde às cinco questões propostas no desafio:
+
+- ✅ Questão 1 — Conciliação das posições
+- ✅ Questão 2 — Exposição financeira das divergências
+- ✅ Questão 3 — Análise da taxa implícita do Fundo
+- ✅ Questão 4 — Composição do portfólio
+- ✅ Questão 5 — Hipóteses de causa-raiz e recomendações
+
+---
+
+## Arquitetura do Projeto
 
 ```
-case_facio_financial_reconciliation/
-
-├── data/
-│   ├── raw/
-│   └── processed/
+case_facio_financial_reconciliation
 │
 ├── analysis/
+│   ├── normalization.py
 │   ├── reconciliation.py
-│   ├── utils.py
-│   └── plots.py
+│   ├── plots.py
+│   └── utils.py
+│
+├── scripts/
+│   ├── parquet_to_csv.py
+│   └── validate_and_clean.py
 │
 ├── notebooks/
 │   └── 01_reconciliation_analysis.ipynb
 │
-├── scripts/
-│   └── validate_and_clean.py
+├── data/
+│   ├── raw/
+│   └── processed/
 │
 ├── outputs/
 │   ├── figures/
-│   ├── kpis_summary.json
 │   ├── conciliation_results_with_rates.csv
-│   └── ...
+│   └── kpis_summary.json
 │
+├── executive_one_page.pdf
+├── resumo_executivo_completo.pdf
+├── report.md
+├── requirements.txt
 └── README.md
 ```
 
 ---
 
-# Tecnologias
+## Fluxo da Solução
+
+```text
+Datasets (.parquet)
+        │
+        ▼
+Limpeza e Padronização
+        │
+        ▼
+Normalização das Chaves
+        │
+        ▼
+Cálculo da Taxa Implícita
+        │
+        ▼
+Cálculo do Valor Presente
+        │
+        ▼
+Reconciliação Facio × Fundo
+        │
+        ▼
+Classificação dos Status
+        │
+        ▼
+KPIs + Visualizações + Relatórios
+```
+
+---
+
+## Tecnologias
 
 - Python 3.13
 - Pandas
@@ -62,75 +104,120 @@ case_facio_financial_reconciliation/
 
 ---
 
-# Fluxo da Solução
+## Metodologia
 
-1. Limpeza e padronização dos datasets
-2. Cálculo da taxa implícita de cessão
-3. Cálculo do Valor Presente (VP)
-4. Conciliação entre Facio e Fundo
-5. Classificação dos registros
-6. Geração de KPIs
-7. Análises exploratórias e visualizações
+A conciliação foi realizada utilizando uma chave composta formada por:
+
+- contrato
+- parcela
+
+Cada registro foi classificado em uma das seguintes categorias:
+
+| Status | Descrição |
+|---------|-----------|
+| Match Exact | Registro encontrado nos dois lados sem divergência financeira |
+| Match Divergent | Registro encontrado em ambos os lados, porém com divergência de VP |
+| Only Facio | Registro existente apenas na posição Facio |
+| Only Fundo | Registro existente apenas na posição do Fundo |
+
+A taxa implícita foi estimada utilizando:
+
+- Valor de cessão;
+- Valor Presente;
+- Data de cessão;
+- Data de referência.
 
 ---
 
 # Principais Resultados
 
-| Indicador | Valor |
-|-----------|------:|
-| Total de registros conciliados | 49.999 |
+## Reconciliação
+
+| Status | Quantidade |
+|---------|-----------:|
 | Match Exact | 35.849 |
 | Match Divergent | 4.846 |
 | Only Fundo | 9.295 |
 | Only Facio | 9 |
 
-### Exposição Financeira
+---
 
-- Match Exact: **R$ 6,64 milhões**
-- Match Divergent: **R$ 1,15 milhão**
-- Only Fundo: **R$ 1,45 milhão**
-- Only Facio: **R$ 1,0 mil**
+## Exposição Financeira
 
-### Produtos
-
-- SimpleCredit: **R$ 5,38 milhões**
-- SalaryAdvanceFX: **R$ 2,33 milhões**
-- eConsignado: **R$ 72 mil**
+| Categoria | Exposição |
+|-----------|----------:|
+| Match Exact | R$ 6,64 milhões |
+| Match Divergent | R$ 1,15 milhão |
+| Only Fundo | R$ 1,45 milhão |
+| Only Facio | R$ 1 mil |
 
 ---
 
-# Principais Insights
+## Principais Insights
 
-- A maior parte da carteira foi conciliada com sucesso.
-- Os maiores riscos financeiros estão concentrados nos registros classificados como **Only Fundo**.
-- O **FIDC4** concentra a maior parte das divergências de valor presente.
-- Foi identificado indício de utilização de convenções diferentes para cálculo da taxa implícita.
-- Grande concentração da carteira em vencimentos de curto prazo.
+- 71,7% dos registros foram conciliados sem divergência financeira.
+- As maiores diferenças estão concentradas no FIDC4.
+- O produto SimpleCredit apresenta maior divergência média de taxa implícita.
+- O FIDC4 concentra aproximadamente 89% da exposição financeira da carteira.
+- 77,7% da carteira do FIDC4 vence em até 30 dias.
 
 ---
 
 # Visualizações
 
-O notebook gera automaticamente:
+As figuras abaixo são geradas automaticamente pelo notebook.
 
-- Distribuição dos status de conciliação
-- Exposição por produto
-- Exposição por fundo
-- Top 10 divergências
-- Histograma das divergências
-- VP por fundo
-- VP por produto
-- Bucket de prazo
-- Boxplot da diferença de taxa por produto
-- Boxplot da diferença de taxa por fundo
+## Distribuição dos Status
 
-Todos os gráficos seguem a identidade visual da Facio.
+![](outputs/figures/distribuicao_status.png)
 
 ---
 
-# Como Executar
+## Exposição por Produto
 
-## Criar ambiente
+![](outputs/figures/vp_produto.png)
+
+---
+
+## Exposição por Fundo
+
+![](outputs/figures/vp_fundo.png)
+
+---
+
+## Bucket de Prazo
+
+![](outputs/figures/bucket_prazo.png)
+
+---
+
+## Top 10 Divergências
+
+![](outputs/figures/top10_divergencias.png)
+
+---
+
+## Distribuição das Divergências
+
+![](outputs/figures/hist_divergencias.png)
+
+---
+
+## Diferença da Taxa por Produto
+
+![](outputs/figures/boxplot_taxa_produto.png)
+
+---
+
+## Diferença da Taxa por Fundo
+
+![](outputs/figures/boxplot_taxa_fundo.png)
+
+---
+
+# Como executar
+
+## Criar ambiente virtual
 
 ```bash
 python -m venv source
@@ -142,7 +229,7 @@ python -m venv source
 source\Scripts\activate
 ```
 
-### Linux / macOS
+### Linux/macOS
 
 ```bash
 source/bin/activate
@@ -154,7 +241,13 @@ Instalar dependências
 pip install -r requirements.txt
 ```
 
-Executar limpeza
+Converter os arquivos Parquet para CSV (opcional)
+
+```bash
+python -m scripts.parquet_to_csv
+```
+
+Executar limpeza e validação
 
 ```bash
 python -m scripts.validate_and_clean
@@ -174,6 +267,18 @@ jupyter notebook notebooks/01_reconciliation_analysis.ipynb
 
 ---
 
+# Entregáveis
+
+- executive_one_page.pdf
+- resumo_executivo_completo.pdf
+- report.md
+- notebook com toda a análise
+- KPIs em JSON
+- resultados em CSV
+- gráficos em PNG
+
+---
+
 # Autor
 
-Projeto desenvolvido como solução para o **Case de Business Analyst – Facio**, contemplando modelagem analítica, conciliação financeira, cálculo de valor presente, análise de risco operacional e geração de indicadores executivos.
+Projeto desenvolvido como solução para o **Case de Business Analyst – Facio**, com foco em reconciliação financeira, modelagem analítica, análise exploratória e recomendações operacionais.
