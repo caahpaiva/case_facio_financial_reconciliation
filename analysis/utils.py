@@ -9,7 +9,7 @@ import pandas as pd
 
 
 EPS_ABS = 0.01
-
+DATE_COLS = ["data_referencia", "data_cessao", "data_vencimento"]
 
 def read_data(facio_path: str, fundo_path: str):
     """Lê os parquets tratados e normaliza as colunas de data para
