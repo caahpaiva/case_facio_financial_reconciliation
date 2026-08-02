@@ -27,7 +27,7 @@ from analysis.utils import (
 
 # --------------------------------------------------------------------------
 # configuração
-# ROOT ancorado no arquivo, não no cwd — mesmo padrão do validate_and_clean.py
+# ROOT ancorado no arquivo, não no cwd 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_PROCESSED = ROOT / "data" / "processed"
 OUTPUT = ROOT / "outputs"
